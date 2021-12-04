@@ -3,16 +3,17 @@ title: "SWAN international presentation figures"
 output: html_notebook
 ---
 
-Start those engines...
-
 ```{r}
+
 load_packages <- function(){library(rvest)
                             library(dplyr)
                             library(sf)
-                            library(sp)}
+                            library(sp)
+                            library(stringr)
+                            library(grid)}
 if("rvest" %in% installed.packages()[,1]==TRUE){load_packages()} 
 if("rvest" %in% installed.packages()[,1]==FALSE){
-  install.packages("rvest","dplyr", "sf", "sp")
+  install.packages("rvest","dplyr", "sf", "sp","stringr")
   load_packages()}
 
 ```
@@ -21,41 +22,120 @@ if("rvest" %in% installed.packages()[,1]==FALSE){
 
 ```{r}
 
-
   seed<-"https://www.aclu.org/past-legislation-affecting-lgbt-rights-across-country-"
-
+  curr<-"https://www.aclu.org/legislation-affecting-lgbt-rights-across-country"
+  
   for(b in 2018:2020){
-    flush.console()
     u<-paste(seed,toString(b),sep="")
-    print(b)
-    assign(paste("bills",b,sep=""),read_html(u) %>% html_table())
-  }
+    assign(paste("bills",b,sep=""),read_html(u) %>% html_table())}
 
-  hc2018 <-  as.data.frame(bills2018[6])[-1,][-c(2,4)] 
-  hc2019 <-  as.data.frame(bills2019[9])[-1,]
-  hc2020 <-  as.data.frame(bills2020[1])[-1,]
-  hc2021 <- as.data.frame(html_table(read_html("https://www.aclu.org/legislation-affecting-lgbt-rights-across-country"))[1])[-1,]
-  
-  hc2018$year <- 2018
-  hc2019$year <- 2019
-  hc2020$year <- 2020
-  hc2021$year <- 2021
-  
+  hc2018 <-  as.data.frame(bills2018[6])[-1,][-c(2,4)]           ;  hc2018$year <- 2018
+  hc2019 <-  as.data.frame(bills2019[9])[-1,]                    ;  hc2019$year <- 2019
+  hc2020 <-  as.data.frame(bills2020[1])[-1,]                    ;  hc2020$year <- 2020
+
   bind_rows(hc2018,hc2019,hc2020) -> hc20xx
-  names(hc20xx[1])<-"STUSPS"
-  bind_rows(hc20xx,hc2021)->all_bills
-  names(all_bills$X1)<-"STUSPS"
+  as.data.frame(hc20xx) -> hc20xx
+  names(hc20xx)[4]<-"year"
+  names(hc20xx)[1]<-"STUSPS"
+  
+  # different 2021 formatting requires modifications to separate bills by house
+  # as.data.frame(hc2021[which(str_detect(hc2021$X2,"HB") ==TRUE),])->hb2021
+
+  hc2021 <-  as.data.frame(html_table(read_html(curr))[1])[-1,]  
+  
+   i<-1
+    the_data<-NULL
+    for (item in hc2021$X1) {
+      unlist(str_extract_all(hc2021$X2[i],"HB\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(hc2021$X1[i],row,hc2021$X3[i]),the_data)->the_data
+      }
+      unlist(str_extract_all(hc2021$X2[i],"SB\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(hc2021$X1[i],row,hc2021$X3[i]),the_data)->the_data
+      }
+     unlist(str_extract_all(hc2021$X2[i],"HF\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(hc2021$X1[i],row,hc2021$X3[i]),the_data)->the_data
+      }
+    i<-i+1
+    }                                                          
+  
+  as.data.frame(the_data) -> hc2021 ; hc2021$year <- 2021 ; names(hc2021) <- c("STUSPS","bill","info","year")
+  
+  bind_rows(hc20xx,hc2021) -> hc_all
+  heatmap(table(hc_all$STUSPS, hc_all$year)) 
   
 ```
 
-build the *maps*
+athletics
+
 
 ```{r}
+
   
+  sp2020 <-  as.data.frame(bills2020[1])[-1,]                    ;  sp2020$year <- 2020
+
+  names(sp2020)[4]<-"year"
+  names(sp2020)[1]<-"STUSPS"
+  
+  # different 2021 formatting requires modifications to separate bills by house
+  # as.data.frame(hc2021[which(str_detect(hc2021$X2,"HB") ==TRUE),])->hb2021
+
+  sp2021 <-  as.data.frame(html_table(read_html(curr))[3])[-1,]  
+  
+   i<-1
+    the_data<-NULL
+    for (item in sp2021$X1) {
+      unlist(str_extract_all(sp2021$X2[i],"HB\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(sp2021$X1[i],row,sp2021$X3[i]),the_data)->the_data
+      }
+      unlist(str_extract_all(sp2021$X2[i],"SB\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(sp2021$X1[i],row,sp2021$X3[i]),the_data)->the_data
+      }
+     unlist(str_extract_all(sp2021$X2[i],"HF\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(sp2021$X1[i],row,sp2021$X3[i]),the_data)->the_data
+      }
+     unlist(str_extract_all(sp2021$X2[i],"SJR\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(sp2021$X1[i],row,sp2021$X3[i]),the_data)->the_data
+      }
+     unlist(str_extract_all(sp2021$X2[i],"HJR\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(sp2021$X1[i],row,sp2021$X3[i]),the_data)->the_data
+      }
+       unlist(str_extract_all(sp2021$X2[i],"S\\(?\\s[:digit:]+"))->per_row
+      for (row in per_row){
+        rbind(c(sp2021$X1[i],row,sp2021$X3[i]),the_data)->the_data
+      }
+
+    i<-i+1
+    }                                                   
+  
+  as.data.frame(the_data) -> sp2021 ; sp2021$year <- 2021 ; names(sp2021) <- c("STUSPS","bill","info","year")
+  
+  
+  bind_rows(sp2020,sp2021) -> sp_all
+  
+  
+  
+  heatmap(table(sp_all$STUSPS, sp_all$year)) 
+  
+```
+
+
+build the *maps*
+
+healthcare
+
+```{r}
 
   shapefile <- "/Users/jessa/Downloads/tl_2017_us_state/tl_2017_us_state.shp"
   shape <- st_read(shapefile)
-  as.data.frame(all_bills)-> healthcare
+  as.data.frame(hc_all)-> healthcare
   names(healthcare)[1]<-"STUSPS"
   merge(shape,healthcare, by=c("STUSPS")) -> tracker_shape_object
   
@@ -78,11 +158,74 @@ build the *maps*
     theme(legend.position = "none")+
     theme_minimal()+
     coord_sf(datum = NA)+
-    facet_wrap(.~year,ncol=2)+
-    labs(caption="data source: ACLU,\nshapefile: US census") -> by_year_map
-
-  gridExtra::grid.arrange(all_map, by_year_map)
+    facet_wrap(.~year,ncol=2) -> by_year_map
   
+  
+  healthcare %>% group_by(STUSPS,year) %>% summarize(n=n()) %>%
+  ggplot()+
+    geom_tile(mapping = aes(STUSPS,year,fill=n))+
+    scale_fill_distiller(palette="Reds",direction=1)+
+    xlab(label = element_blank())+
+    ylab(label= element_blank())+
+    theme_bw()+
+    theme(panel.grid.major = element_line(colour = "transparent"),panel.grid.minor = element_line(colour = "transparent")) 
+
+  gridExtra::grid.arrange(all_map+labs(
+    subtitle = "Bills proposed banning healthcare for trans youth\n2018-2020\n"),
+    by_year_map,ncol=2)
+  
+  
+  # +labs(    title = "Bills proposed banning healthcare for trans youth",
+  #           subtitle="Bills introduced to date, 2018 - 2021"
   
 ```
 
+sports
+
+
+```{r}
+
+  shapefile <- "/Users/jessa/Downloads/tl_2017_us_state/tl_2017_us_state.shp"
+  shape <- st_read(shapefile)
+  as.data.frame(sp_all)-> sports
+  names(sports)[1]<-"STUSPS"
+  merge(shape,sports, by=c("STUSPS")) -> tracker_shape_object
+  
+  ggplot()+
+    geom_sf(data = shape,fill="white")+
+    geom_sf(data=tracker_shape_object,fill="red",alpha=0.3)+
+    xlim(c(130,60))+
+    ylim(c(20,50))+
+    theme(panel.grid.major = element_line(colour = "transparent"))+
+    theme(legend.position = "none")+
+    theme_minimal()+
+    coord_sf(datum = NA) -> all_map
+  
+  ggplot()+
+    geom_sf(data = shape,fill="white")+
+    geom_sf(data=tracker_shape_object,fill="red",alpha=0.4)+
+    xlim(c(130,60))+
+    ylim(c(20,50))+
+    theme(panel.grid.major = element_line(colour = "transparent"))+
+    theme(legend.position = "none")+
+    theme_minimal()+
+    coord_sf(datum = NA)+
+    facet_wrap(.~year,ncol=2) -> by_year_map
+  
+  
+  healthcare %>% group_by(STUSPS,year) %>% summarize(n=n()) %>%
+  ggplot()+
+    geom_tile(mapping = aes(STUSPS,year,fill=n))+
+    scale_fill_distiller(palette="Reds",direction=1)+
+    xlab(label = element_blank())+
+    ylab(label= element_blank())+
+    theme_bw()+
+    theme(panel.grid.major = element_line(colour = "transparent"),panel.grid.minor = element_line(colour = "transparent")) 
+
+  gridExtra::grid.arrange(all_map+labs(
+    subtitle="Bills banning trans youth from sports\n2018 - 2021\n"), 
+    by_year_map+labs(caption="jessica.kant@childrens.harvard.edu"),ncol=1)
+  
+
+  
+```
